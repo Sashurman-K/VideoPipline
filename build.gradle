@@ -1,0 +1,44 @@
+plugins {
+	id 'org.springframework.boot' version '4.0.6' apply false
+	id 'io.spring.dependency-management' version '1.1.7' apply false
+}
+
+group = 'com.sashurman'
+version = '0.0.1-SNAPSHOT'
+
+
+
+repositories {
+	mavenCentral()
+}
+allprojects {
+	group = 'ru.videopipeline'
+	version = '0.0.1-SNAPSHOT'
+
+	repositories {
+		mavenCentral()
+	}
+
+}
+subprojects {
+	apply plugin: 'java'
+	java {
+		toolchain {
+			languageVersion = JavaLanguageVersion.of(25)
+		}
+	}
+
+	if (project.name == 'common') {
+		tasks.matching { it.name == 'bootJar' }.all {
+			enabled = false
+		}
+		tasks.matching { it.name == 'jar' }.all {
+			enabled = true
+		}
+	}
+}
+
+
+tasks.withType(Test).configureEach {
+	useJUnitPlatform()
+}

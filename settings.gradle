@@ -1,0 +1,6 @@
+rootProject.name = 'VideoPipeline'
+
+include 'user-service'
+include 'api-gateway'
+include 'common'
+include 'upload-service'

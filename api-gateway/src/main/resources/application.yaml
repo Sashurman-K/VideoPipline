@@ -1,0 +1,40 @@
+server:
+  port: 8080
+
+jwt:
+  secret: ${JWT_SECRET_KEY}
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    reactor.netty.http.client: DEBUG
+spring:
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: user-auth-route
+              uri: http://user-service:8081
+              predicates:
+                - Path=/api/v1/auth/**
+
+            - id: user-service-route
+              uri: http://user-service:8081
+              predicates:
+                - Path=/api/v1/users/**
+              filters:
+                - JwtAuthFilter
+
+            - id: upload-service-route
+              uri: http://upload-service:8082
+              predicates:
+                - Path=/api/v1/videos/**
+              filters:
+                - JwtAuthFilter
+
+            - id: ai-service-route
+              uri: http://ai-service:8084
+              predicates:
+                - Path=/api/v1/analysis/**
+              filters:
+                - JwtAuthFilter
