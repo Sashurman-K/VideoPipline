@@ -33,7 +33,7 @@ public class UserService {
         User user = new User();
         user.setEmail(request.email());
         user.setPasswordHash(passwordEncoder.encode(request.password()));
-
+        user.setUsername(request.username());
         return userRepository.save(user);
     }
 

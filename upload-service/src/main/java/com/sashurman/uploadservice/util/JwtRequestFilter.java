@@ -1,4 +1,4 @@
-package com.sashurman.uploadservice.utils;
+package com.sashurman.uploadservice.util;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -7,6 +7,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -14,7 +15,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
+@Slf4j
 @Component
 public class JwtRequestFilter extends OncePerRequestFilter {
 
@@ -26,13 +29,12 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String authHeader = request.getHeader("Authorization");
-
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String jwt = authHeader.substring(7);
             try {
                 // Проверяем подпись токена
                 String username = Jwts.parser()
-                        .verifyWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret)))
+                        .verifyWith(Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8)))
                         .build()
                         .parseSignedClaims(jwt)
                         .getPayload()
@@ -43,7 +45,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(auth);
                 }
             } catch (Exception e) {
-
+                log.error("Ошибка валидации JWT токена: {}", e.getMessage());
             }
         }
         filterChain.doFilter(request, response);

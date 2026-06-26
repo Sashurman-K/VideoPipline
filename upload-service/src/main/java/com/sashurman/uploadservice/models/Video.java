@@ -28,7 +28,7 @@ public class Video {
     @Column(length = 1000)
     private String description;
 
-    @Column(name = "original_path", length = 500, nullable = false)
+    @Column(name = "original_path", length = 500)
     private String originalPath;
 
     @Column(name="file_size_bytes", columnDefinition = "BIGINT")
@@ -83,15 +83,11 @@ public class Video {
         this.originalPath = originalPath;
         this.format = format;
     }
-    public Video(UUID id,
-            UUID userId,
+    public Video(UUID userId,
                  String title,
-                 String originalPath,
                  String format){
-        this.id = id;
         this.title = title;
         this.userId = userId;
-        this.originalPath = originalPath;
         this.format = format;
     }
 }

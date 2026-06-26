@@ -6,11 +6,6 @@ plugins {
 group = 'com.sashurman'
 version = '0.0.1-SNAPSHOT'
 
-
-
-repositories {
-	mavenCentral()
-}
 allprojects {
 	group = 'ru.videopipeline'
 	version = '0.0.1-SNAPSHOT'
@@ -18,10 +13,12 @@ allprojects {
 	repositories {
 		mavenCentral()
 	}
-
 }
+
 subprojects {
 	apply plugin: 'java'
+	apply plugin: 'io.spring.dependency-management'
+
 	java {
 		toolchain {
 			languageVersion = JavaLanguageVersion.of(25)
@@ -29,6 +26,7 @@ subprojects {
 	}
 
 	if (project.name == 'common') {
+		// common — обычная библиотека
 		tasks.matching { it.name == 'bootJar' }.all {
 			enabled = false
 		}
@@ -36,8 +34,20 @@ subprojects {
 			enabled = true
 		}
 	}
-}
 
+	if (project.name == 'upload-service') {
+		apply plugin: 'org.springframework.boot'
+
+		bootJar {
+			enabled = true
+			archiveClassifier = ''
+		}
+
+		tasks.matching { it.name == 'jar' }.all {
+			enabled = false  // обычный jar не нужен
+		}
+	}
+}
 
 tasks.withType(Test).configureEach {
 	useJUnitPlatform()

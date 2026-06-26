@@ -1,12 +1,15 @@
 package com.sashurman.uploadservice.service;
 
 import com.sashurman.uploadservice.DTO.VideoUploadRequest;
+import com.sashurman.uploadservice.DTO.event.VideoUploadedEvent;
 import com.sashurman.uploadservice.exception.InvalidVideoException;
 import com.sashurman.uploadservice.models.Video;
 import com.sashurman.uploadservice.repository.VideoRepository;
-import com.sashurman.userservice.exception.InvalidCredentialsException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -16,9 +19,10 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.UUID;
-
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UploadService {
@@ -30,7 +34,7 @@ public class UploadService {
     @Value("${AWS.bucket-name}")
     private String bucketName;
     private final VideoRepository videoRepository;
-    private final KafkaTemplate<String, VideoUploadedEvent> kafkaTemplate;
+    private final ApplicationEventPublisher eventPublisher;
 
 
     private void validateVideo(MultipartFile file){
@@ -40,7 +44,8 @@ public class UploadService {
         if (file.getSize() > MAX_SIZE){
             throw new InvalidVideoException("File too big");
         }
-        if (ALLOWED_FORMATS.contains(file.getContentType())){
+        if (!ALLOWED_FORMATS.contains(file.getContentType())){
+            log.warn("Not supported format {}", file.getContentType());
             throw new InvalidVideoException("Not supported format");
         }
     }
@@ -53,27 +58,37 @@ public class UploadService {
         return String.format("raw/%s/%s/original.%s", userId, videoId, ext);
     }
     @Transactional
-    public void uploadVideo(VideoUploadRequest request, UUID userId){
-        validateVideo(request.file());
-        UUID videoId = UUID.randomUUID();
-        String key = originalPathBuilder(request.file(), userId, videoId);
-        try(InputStream inputStream = request.file().getInputStream()){
+    public void uploadVideo(MultipartFile file, VideoUploadRequest request, UUID userId){
+        validateVideo(file);
+        Video video = new Video(
+                userId,
+                request.title(),
+                file.getContentType()
+        );
+        videoRepository.save(video);
+        String key = originalPathBuilder(file, userId, video.getId());
+        try(InputStream inputStream = file.getInputStream()){
             PutObjectRequest objectRequest = PutObjectRequest.builder()
                     .bucket(bucketName)
                     .key(key)
                     .build();
-            s3Client.putObject(objectRequest, RequestBody.fromInputStream(inputStream, request.file().getSize()));
+            s3Client.putObject(objectRequest, RequestBody.fromInputStream(inputStream, file.getSize()));
         }
         catch (IOException e){
             throw new InvalidVideoException();
         }
-        Video video = new Video(
-                videoId,
-                userId,
-                request.title(),
-                key,
-                request.file().getContentType()
-        );
+        video.setOriginalPath(key);
         videoRepository.save(video);
+
+        eventPublisher.publishEvent(new VideoUploadedEvent(
+                UUID.randomUUID(),
+                video.getId(),
+                "video.uploaded",
+                LocalDateTime.now(),
+                userId,
+                video.getOriginalPath(),
+                video.getFileSizeBytes(),
+                video.getFormat()
+                ));
     }
 }

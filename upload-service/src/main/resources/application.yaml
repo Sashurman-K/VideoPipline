@@ -1,9 +1,18 @@
+logging:
+  level:
+    root: INFO
+    org.flywaydb: DEBUG
+    org.springframework.web : DEBUG
+    org.hibernate: debug
+    org.springframework.boot.autoconfigure.flyway: DEBUG
+    org.springframework.boot.autoconfigure.condition: DEBUG
+
 AWS:
   access-key: ${AWS_ACCESS_KEY}
   secret-key: ${AWS_SECRET_KEY}
   region: ru-7
   bucket-name: ${AWS_BUCKET_NAME}
-  endpoint: s3.ru-7.storage.selcloud.ru
+  endpoint: https://s3.ru-7.storage.selcloud.ru
 server:
   port: 8082
 jwt:
@@ -12,23 +21,31 @@ jwt:
 spring:
   application:
     name: upload-service
-
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
   datasource:
-    url: jdbc:postgresql://localhost:5432/user_db
+    url: jdbc:postgresql://localhost:5432/
     username: user
     password: password
     driver-class-name: org.postgresql.Driver
-
+  flyway:
+    enabled: true
+    schemas: public
+    baseline-on-migrate: true
+    baseline-version: 1
+    fail-on-missing-locations: true # Приложение упадет, если не найдет папку db/migration
+    locations: classpath:db/migration # Явно указываем, где искать
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
-  Kafka:
-    bootstrap-servers: localhost:9092
-
+  kafka:
+    bootstrap-servers: kafka-broker:9092
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
 
-      properties:
-        acks: all
+
+
