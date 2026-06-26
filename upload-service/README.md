@@ -5,6 +5,7 @@
    * **Java 25**
    * **Spring Boot 4.0.6**
    * **Spring Data JPA**
+   * **Spring Security** (JWT аутентификация)
    * **PostgreSQL 17**
    * **AWS S3 (Compatible Storage)**
    * **Flyway (миграции БД)**
