@@ -1,16 +1,16 @@
 server:
-  port: 8081
+  port: ${APP_PORT:8080}
 jwt:
-  secret: ${JWT_SECRET_KEY}
-  expiration-ms: 86400000
+  secret: ${JWT_SECRET_KEY:super_secret_jwt_key_example_change_me_in_production_32bytes_min}
+  expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 spring:
   application:
     name: user-service
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/user_db
-    username: user
-    password: password
+    url: jdbc:postgresql://${DB_HOST:postgres-user}:${POSTGRES_PORT:5432}/${POSTGRES_DB:user_db}
+    username: ${POSTGRES_USER:user}
+    password: ${POSTGRES_PASS:password}
     driver-class-name: org.postgresql.Driver
 
   jpa:

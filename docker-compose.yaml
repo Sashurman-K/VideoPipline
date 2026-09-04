@@ -1,30 +1,11 @@
-
 services:
   kafka:
     image: apache/kafka:3.7.0
     container_name: kafka-broker
+    env_file:
+      - env/kafka.env
     ports:
-      - "29092:29092"
-    environment:
-      - KAFKA_NODE_ID=1
-      - KAFKA_PROCESS_ROLES=broker,controller
-
-
-      - KAFKA_LISTENERS=INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
-
-      - KAFKA_ADVERTISED_LISTENERS=INTERNAL://kafka:9092,EXTERNAL://localhost:29092
-
-      # 3. Маппинг протоколов
-      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
-      - KAFKA_INTER_BROKER_LISTENER_NAME=INTERNAL
-
-      # Остальные твои настройки KRaft:
-      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
-      - KAFKA_CLUSTER_ID=MkU3OEVBNT-JODIyU24xRzE5VjN6SQ
-      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
-      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
-      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - "${KAFKA_PORT:-29092}:9092"
     healthcheck:
       test: [ "CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1" ]
       interval: 10s
@@ -32,34 +13,57 @@ services:
       retries: 5
     networks:
       - pipeline-network
+  cloudbeaver:
+    image: dbeaver/cloudbeaver:24.0.0
+    container_name: cloudbeaver
+    ports:
+      - "${CLOUDBEAVER_PORT}:8978"
+    volumes:
+      - cloudbeaver_data:/opt/cloudbeaver/workspace
+    networks:
+      - pipeline-network
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
     ports:
-      - "8083:8080"
+      - "${KAFKA_UI_PORT}:8080"
     depends_on:
       - kafka
-    environment:
-      - KAFKA_CLUSTERS_0_NAME=Local-Cluster
-      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
+    env_file:
+      - env/kafka.env
     networks:
       - pipeline-network
 
-  postgres-db:
+  postgres-user-db:
     image: postgres:17-alpine
-    container_name: pipeline-postgres
+    container_name: pipeline-postgres-userdb
+    env_file:
+      - user-service/user-service.env
     ports:
-      - "5432:5432"
+      - "${POSTGRES_USER_PORT}:5432"
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U user" ]
       interval: 5s
       timeout: 5s
       retries: 5
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - pipeline-network
+
+  postgres-uploud-db:
+    image: postgres:17-alpine
+    container_name: pipeline-postgres-uplouddb
+    env_file:
+      - upload-service/upload-service.env
+    ports:
+      - "${POSTGRES_UPLOAD_PORT}:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U user" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
@@ -69,15 +73,14 @@ services:
     build:
       context: ./user-service
     container_name: user-service
+    env_file:
+      - user-service/user-service.env
+      - env/secure.env
+      - env/ports.env
     ports:
-      - "8081:8081"
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/${POSTGRES_DB}
-      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
-      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - "${USER_SERVICE_PORT}:${APP_PORT}"
     depends_on:
-      - postgres-db
+      - postgres-user-db
     networks:
       - pipeline-network
 
@@ -86,20 +89,32 @@ services:
       context: ./upload-service
     container_name: upload-service
     ports:
-      - "8082:8082"
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/${POSTGRES_DB}
-      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
-      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
-      - AWS_SECRET_KEY=${AWS_SECRET_KEY}
-      - AWS_BUCKET_NAME=${AWS_BUCKET_NAME}
-      - SPRING_FLYWAY_ENABLED=true
+      - "${UPLOAD_SERVICE_PORT}:${APP_PORT}"
+    env_file:
+      - upload-service/upload-service.env
+      - env/secure.env
+      - env/ports.env
+      - env/aws.env
     depends_on:
       kafka:
         condition: service_healthy
-      postgres-db:
+      postgres-upload-db:
+        condition: service_healthy
+    networks:
+      - pipeline-network
+
+  splitter-service:
+    build:
+      context: ./splitter-service
+    container_name: splitter-service
+    env_file:
+      - env/secure.env
+      - env/ports.env
+      - env/aws.env
+    ports:
+      - "${SPLITTER_SERVICE_PORT}:${APP_PORT}"
+    depends_on:
+      kafka:
         condition: service_healthy
     networks:
       - pipeline-network
@@ -123,3 +138,5 @@ networks:
 
 volumes:
   postgres-data:
+  cloudbeaver_data:
+  kafka_data:

@@ -1,23 +1,26 @@
+server:
+  port: ${APP_PORT:8080}
+
 logging:
   level:
     root: INFO
     org.flywaydb: DEBUG
-    org.springframework.web : DEBUG
-    org.hibernate: debug
+    org.springframework.web: DEBUG
+    org.hibernate: DEBUG
     org.springframework.boot.autoconfigure.flyway: DEBUG
     org.springframework.boot.autoconfigure.condition: DEBUG
 
-AWS:
+aws:
   access-key: ${AWS_ACCESS_KEY}
   secret-key: ${AWS_SECRET_KEY}
-  region: ru-7
-  bucket-name: ${AWS_BUCKET_NAME}
-  endpoint: https://s3.ru-7.storage.selcloud.ru
-server:
-  port: 8082
+  region: ${AWS_REGION}
+  bucket-name: ${AWS_BUCKET_NAME:raw-videos}
+  endpoint: ${AWS_ENDPOINT:http://localhost:9000}
+
 jwt:
-  secret: ${JWT_SECRET_KEY}
-  expiration-ms: 86400000
+  secret: ${JWT_SECRET_KEY:dev_super_secret_key_32_bytes_minimum_length!}
+  expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+
 spring:
   application:
     name: upload-service
@@ -26,26 +29,23 @@ spring:
       max-file-size: 100MB
       max-request-size: 100MB
   datasource:
-    url: jdbc:postgresql://localhost:5432/
-    username: user
-    password: password
+    url: jdbc:postgresql://${DB_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:upload_db}
+    username: ${POSTGRES_USER:user}
+    password: ${POSTGRES_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
   flyway:
     enabled: true
     schemas: public
     baseline-on-migrate: true
     baseline-version: 1
-    fail-on-missing-locations: true # Приложение упадет, если не найдет папку db/migration
-    locations: classpath:db/migration # Явно указываем, где искать
+    fail-on-missing-locations: true
+    locations: classpath:db/migration
   jpa:
     hibernate:
       ddl-auto: validate
     show-sql: true
   kafka:
-    bootstrap-servers: kafka-broker:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
-
-
-

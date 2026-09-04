@@ -1,0 +1,30 @@
+AWS:
+  access-key: ${AWS_ACCESS_KEY}
+  secret-key: ${AWS_SECRET_KEY}
+  region: ${AWS_REGION}
+  bucket-proccessed-name: ${AWS_PROCESSED_BUCKET_NAME}
+  bucket-raw-name: ${AWS_RAW_BUCKET_NAME}
+  endpoint: ${AWS_ENDPOINT}
+server:
+  port: ${APP_PORT:8083}
+jwt:
+  secret: ${JWT_SECRET_KEY:super_secret_jwt_key_example_change_me_in_production_32bytes_min}
+  expiration-ms: ${JWT_EXPIRATION_MS:864000}
+spring:
+  application:
+    name: splitter-service
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+
