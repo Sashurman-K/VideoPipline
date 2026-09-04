@@ -44,7 +44,7 @@ subprojects {
 		}
 
 		tasks.matching { it.name == 'jar' }.all {
-			enabled = false  // обычный jar не нужен
+			enabled = false
 		}
 	}
 }

@@ -29,8 +29,10 @@ public class S3Config {
     private String secretKey;
     @Value("${AWS.region}")
     private String region;
-    @Value("${AWS.bucket-name}")
-    private String bucketName;
+    @Value("${AWS.raw-bucket-name}")
+    private String rawBucketName;
+    @Value("${AWS.proccessed-bucket-name}")
+    private String processedBucketName;
     @Value("${AWS.endpoint}")
     private String endpoint;
     @Bean
@@ -52,6 +54,23 @@ public class S3Config {
                 .endpointOverride(uri)
                 .serviceConfiguration(s3Configuration)
                 .build();
+        checkBucketAvailability(s3Client, rawBucketName);
+        checkBucketAvailability(s3Client, processedBucketName);
+        return s3Client;
+
+    }
+    private void createS3Bucket(S3Client s3Client, String bucketName) {
+        try {
+            s3Client.createBucket(CreateBucketRequest.builder()
+                    .bucket(bucketName)
+                    .build());
+            log.info("Bucket '{}' success created.", bucketName);
+        } catch (S3Exception e) {
+            log.error("Failed to create a bucket '{}': {}", bucketName, e.getMessage());
+            throw e;
+        }
+    }
+    private void checkBucketAvailability(S3Client s3Client, String bucketName){
         try {
             s3Client.headBucket(HeadBucketRequest.builder()
                     .bucket(bucketName)
@@ -61,23 +80,10 @@ public class S3Config {
 
         } catch (NoSuchBucketException e) {
             log.info("Bucket '{}' not found. initializing creation...", bucketName);
-            createS3Bucket(s3Client);
+            createS3Bucket(s3Client, bucketName);
 
         } catch (S3Exception e) {
             log.error("Error AWS S3 on bucket check (Status code: {}): {}", e.statusCode(), e.getMessage());
-            throw e;
-        }
-        return s3Client;
-
-    }
-    private void createS3Bucket(S3Client s3Client) {
-        try {
-            s3Client.createBucket(CreateBucketRequest.builder()
-                    .bucket(bucketName)
-                    .build());
-            log.info("Bucket '{}' success created.", bucketName);
-        } catch (S3Exception e) {
-            log.error("Failed to create a bucket '{}': {}", bucketName, e.getMessage());
             throw e;
         }
     }
