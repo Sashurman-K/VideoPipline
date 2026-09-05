@@ -1,4 +1,4 @@
-"""# Video Pipeline Microservices
+# Video Pipeline Microservices
 
 ![Java](https://img.shields.io/badge/Java-21-ED8B00?style=flat&logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.x-6DB33F?style=flat&logo=springboot&logoColor=white)
