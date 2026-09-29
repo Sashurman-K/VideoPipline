@@ -1,6 +1,5 @@
-package com.sashurman.uploadservice.exception;
+package com.sashurman.common.exception;
 
-import com.sashurman.common.exception.AppException;
 import org.springframework.http.HttpStatus;
 
 public class InvalidVideoException extends AppException {

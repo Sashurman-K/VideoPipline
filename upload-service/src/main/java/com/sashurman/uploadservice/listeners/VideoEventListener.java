@@ -22,7 +22,6 @@ public class VideoEventListener {
         log.info("Транзакция успешна. Отправляем ивент в Кафку для видео: {}", event.videoId());
         String jsonPayload = objectMapper.writeValueAsString(event);
         kafkaTemplate.send("product-created-events-topic", jsonPayload);
-
     }
 
 }

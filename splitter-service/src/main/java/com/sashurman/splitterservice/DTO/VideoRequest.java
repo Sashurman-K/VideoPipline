@@ -11,6 +11,7 @@ public record VideoRequest(
         UUID userId,
         String originalPath,
         Long fileSizeBytes,
-        String format
+        String format,
+        int segmentCount
 ) {
 }

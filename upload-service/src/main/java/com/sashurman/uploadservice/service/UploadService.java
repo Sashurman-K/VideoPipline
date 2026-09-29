@@ -1,15 +1,14 @@
 package com.sashurman.uploadservice.service;
 
+import com.sashurman.common.exception.InvalidVideoException;
 import com.sashurman.uploadservice.DTO.VideoUploadRequest;
 import com.sashurman.uploadservice.DTO.event.VideoUploadedEvent;
-import com.sashurman.uploadservice.exception.InvalidVideoException;
 import com.sashurman.uploadservice.models.Video;
 import com.sashurman.uploadservice.repository.VideoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -31,7 +30,7 @@ public class UploadService {
             "video/mp4", "video/webm", "video/quicktime"
     );
     private final S3Client s3Client;
-    @Value("${AWS.bucket-name}")
+    @Value("${AWS.raw-bucket-name}")
     private String bucketName;
     private final VideoRepository videoRepository;
     private final ApplicationEventPublisher eventPublisher;

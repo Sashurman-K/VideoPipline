@@ -1,6 +1,7 @@
 package com.sashurman.splitterservice.utils;
 
 import com.sashurman.splitterservice.DTO.TimeSegment;
+import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.IOException;
@@ -10,13 +11,14 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+@Component
 public final class FfmpegNativeProducer {
 
     private FfmpegNativeProducer(){
         throw new UnsupportedOperationException("Cannot create an instance");
     }
 
-    public static List<File> splitVideo(File inputFile, File outputDir, int segmentDurationSeconds)
+    public List<File> splitVideo(File inputFile, File outputDir, int segmentDurationSeconds)
             throws IOException, InterruptedException {
 
         // Шаблон имени чанков: output_001.mp4, output_002.mp4
@@ -63,7 +65,8 @@ public final class FfmpegNativeProducer {
         Arrays.sort(files, Comparator.comparing(File::getName));
         return List.of(files);
     }
-    public static List<File> splitVideo(File inputFile, File outputDir, List<TimeSegment> segments)
+
+    public List<File> splitVideo(File inputFile, File outputDir, List<TimeSegment> segments)
             throws IOException, InterruptedException {
 
         List<File> outputFiles = new ArrayList<>();
@@ -101,7 +104,7 @@ public final class FfmpegNativeProducer {
         return outputFiles;
     }
 
-    public static List<File>  splitVideo(File inputFile, File outputDir, int quantity, double durationFUllVideo) throws IOException, InterruptedException {
+    public List<File> splitVideo(File inputFile, File outputDir, int quantity, double durationFUllVideo) throws IOException, InterruptedException {
         List<TimeSegment> segments = TimeSegment.generateSegments(durationFUllVideo, quantity);
         return splitVideo(inputFile, outputDir, segments);
 

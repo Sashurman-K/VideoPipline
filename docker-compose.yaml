@@ -48,11 +48,11 @@ services:
       timeout: 5s
       retries: 5
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-user-data:/var/lib/postgresql/data
     networks:
       - pipeline-network
 
-  postgres-uploud-db:
+  postgres-upload-db:
     image: postgres:17-alpine
     container_name: pipeline-postgres-uplouddb
     env_file:
@@ -65,7 +65,7 @@ services:
       timeout: 5s
       retries: 5
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-upload-data:/var/lib/postgresql/data
     networks:
       - pipeline-network
 
@@ -124,9 +124,11 @@ services:
       context: ./api-gateway
     container_name: api-gateway
     ports:
-      - "8080:8080"
-    environment:
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - "${API_GATEAWAY_PORT}:${APP_PORT}"
+    env_file:
+      - env/ports.env
+      - env/secure.env
+      - api-gateway/api-gateway.env
     depends_on:
       - user-service
     networks:
@@ -137,6 +139,7 @@ networks:
     driver: bridge
 
 volumes:
-  postgres-data:
+  postgres-user-data:
+  postgres-upload-data:
   cloudbeaver_data:
   kafka_data:
