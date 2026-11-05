@@ -1,138 +1,174 @@
 services:
   kafka:
     image: apache/kafka:3.7.0
-    container_name: kafka-broker
-    env_file:
-      - env/kafka.env
+    environment:
+      CLUSTER_ID: MkU3OEVBNT-JODIyU24xRzE5VjN6SQ
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://${KAFKA_EXTERNAL_HOST:-localhost}:${KAFKA_PORT:-29092}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
     ports:
-      - "${KAFKA_PORT:-29092}:9092"
+      - "${KAFKA_PORT:-29092}:29092"
     healthcheck:
-      test: [ "CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1" ]
+      test: [CMD-SHELL, "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - pipeline-network
-  cloudbeaver:
-    image: dbeaver/cloudbeaver:24.0.0
-    container_name: cloudbeaver
-    ports:
-      - "${CLOUDBEAVER_PORT}:8978"
-    volumes:
-      - cloudbeaver_data:/opt/cloudbeaver/workspace
-    networks:
-      - pipeline-network
+    networks: [pipeline-network]
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
-    container_name: kafka-ui
+    environment:
+      KAFKA_CLUSTERS_0_NAME: pipeline
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
     ports:
-      - "${KAFKA_UI_PORT}:8080"
+      - "${KAFKA_UI_PORT:-8082}:8080"
     depends_on:
-      - kafka
-    env_file:
-      - env/kafka.env
-    networks:
-      - pipeline-network
+      kafka:
+        condition: service_healthy
+    networks: [pipeline-network]
+
+  cloudbeaver:
+    image: dbeaver/cloudbeaver:24.0.0
+    ports:
+      - "${CLOUDBEAVER_PORT:-8978}:8978"
+    volumes: [cloudbeaver_data:/opt/cloudbeaver/workspace]
+    networks: [pipeline-network]
 
   postgres-user-db:
     image: postgres:17-alpine
-    container_name: pipeline-postgres-userdb
-    env_file:
-      - user-service/user-service.env
+    environment:
+      POSTGRES_DB: ${USER_DB_NAME}
+      POSTGRES_USER: ${USER_DB_USER}
+      POSTGRES_PASSWORD: ${USER_DB_PASSWORD:?Set USER_DB_PASSWORD in .env}
     ports:
       - "${POSTGRES_USER_PORT}:5432"
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U user" ]
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
       interval: 5s
       timeout: 5s
       retries: 5
-    volumes:
-      - postgres-user-data:/var/lib/postgresql/data
-    networks:
-      - pipeline-network
+    volumes: [postgres-user-data:/var/lib/postgresql/data]
+    networks: [pipeline-network]
 
   postgres-upload-db:
     image: postgres:17-alpine
-    container_name: pipeline-postgres-uplouddb
-    env_file:
-      - upload-service/upload-service.env
+    environment:
+      POSTGRES_DB: ${UPLOAD_DB_NAME}
+      POSTGRES_USER: ${UPLOAD_DB_USER}
+      POSTGRES_PASSWORD: ${UPLOAD_DB_PASSWORD:?Set UPLOAD_DB_PASSWORD in .env}
     ports:
       - "${POSTGRES_UPLOAD_PORT}:5432"
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U user" ]
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
       interval: 5s
       timeout: 5s
       retries: 5
-    volumes:
-      - postgres-upload-data:/var/lib/postgresql/data
-    networks:
-      - pipeline-network
+    volumes: [postgres-upload-data:/var/lib/postgresql/data]
+    networks: [pipeline-network]
 
   user-service:
     build:
       context: ./user-service
-    container_name: user-service
-    env_file:
-      - user-service/user-service.env
-      - env/secure.env
-      - env/ports.env
+    environment:
+      SERVER_PORT: 8080
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
+      USER_DB_HOST: postgres-user-db
+      USER_DB_PORT: 5432
+      USER_DB_NAME: ${USER_DB_NAME}
+      USER_DB_USER: ${USER_DB_USER}
+      USER_DB_PASSWORD: ${USER_DB_PASSWORD}
     ports:
-      - "${USER_SERVICE_PORT}:${APP_PORT}"
+      - "${USER_SERVICE_PORT}:8080"
     depends_on:
-      - postgres-user-db
-    networks:
-      - pipeline-network
+      postgres-user-db:
+        condition: service_healthy
+    networks: [pipeline-network]
 
   upload-service:
     build:
       context: ./upload-service
-    container_name: upload-service
+    environment:
+      SERVER_PORT: 8080
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
+      UPLOAD_DB_HOST: postgres-upload-db
+      UPLOAD_DB_PORT: 5432
+      UPLOAD_DB_NAME: ${UPLOAD_DB_NAME}
+      UPLOAD_DB_USER: ${UPLOAD_DB_USER}
+      UPLOAD_DB_PASSWORD: ${UPLOAD_DB_PASSWORD}
+      AWS_ACCESS_KEY: ${AWS_ACCESS_KEY}
+      AWS_SECRET_KEY: ${AWS_SECRET_KEY}
+      AWS_REGION: ${AWS_REGION}
+      AWS_RAW_BUCKET_NAME: ${AWS_RAW_BUCKET_NAME}
+      AWS_PROCESSED_BUCKET_NAME: ${AWS_PROCESSED_BUCKET_NAME}
+      AWS_ENDPOINT: ${AWS_ENDPOINT}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_UPLOAD_TOPIC_NAME: ${KAFKA_UPLOAD_TOPIC_NAME}
+      KAFKA_PROCESSING_TOPIC_NAME: ${KAFKA_PROCESSING_TOPIC_NAME}
+      KAFKA_TOPIC_PARTITIONS: ${KAFKA_TOPIC_PARTITIONS}
+      KAFKA_TOPIC_REPLICAS: ${KAFKA_TOPIC_REPLICAS}
+      KAFKA_TOPIC_MIN_ISR: ${KAFKA_TOPIC_MIN_ISR}
+      KAFKA_UPLOAD_GROUP_ID: ${KAFKA_UPLOAD_GROUP_ID}
     ports:
-      - "${UPLOAD_SERVICE_PORT}:${APP_PORT}"
-    env_file:
-      - upload-service/upload-service.env
-      - env/secure.env
-      - env/ports.env
-      - env/aws.env
+      - "${UPLOAD_SERVICE_PORT}:8080"
     depends_on:
-      kafka:
-        condition: service_healthy
       postgres-upload-db:
         condition: service_healthy
-    networks:
-      - pipeline-network
+      kafka:
+        condition: service_healthy
+    networks: [pipeline-network]
 
   splitter-service:
     build:
       context: ./splitter-service
-    container_name: splitter-service
-    env_file:
-      - env/secure.env
-      - env/ports.env
-      - env/aws.env
+    environment:
+      SERVER_PORT: 8080
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
+      AWS_ACCESS_KEY: ${AWS_ACCESS_KEY}
+      AWS_SECRET_KEY: ${AWS_SECRET_KEY}
+      AWS_REGION: ${AWS_REGION}
+      AWS_RAW_BUCKET_NAME: ${AWS_RAW_BUCKET_NAME}
+      AWS_PROCESSED_BUCKET_NAME: ${AWS_PROCESSED_BUCKET_NAME}
+      AWS_ENDPOINT: ${AWS_ENDPOINT}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_UPLOAD_TOPIC_NAME: ${KAFKA_UPLOAD_TOPIC_NAME}
+      KAFKA_PROCESSING_TOPIC_NAME: ${KAFKA_PROCESSING_TOPIC_NAME}
+      KAFKA_FINAL_TOPIC_NAME: ${KAFKA_FINAL_TOPIC_NAME}
+      KAFKA_TOPIC_PARTITIONS: ${KAFKA_TOPIC_PARTITIONS}
+      KAFKA_TOPIC_REPLICAS: ${KAFKA_TOPIC_REPLICAS}
+      KAFKA_TOPIC_MIN_ISR: ${KAFKA_TOPIC_MIN_ISR}
+      KAFKA_SPLITTER_GROUP_ID: ${KAFKA_SPLITTER_GROUP_ID}
     ports:
-      - "${SPLITTER_SERVICE_PORT}:${APP_PORT}"
+      - "${SPLITTER_SERVICE_PORT}:8080"
     depends_on:
       kafka:
         condition: service_healthy
-    networks:
-      - pipeline-network
+    networks: [pipeline-network]
 
   api-gateway:
     build:
       context: ./api-gateway
-    container_name: api-gateway
+    environment:
+      SERVER_PORT: 8080
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
+      USER_SERVICE_URL: http://user-service:8080
+      UPLOAD_SERVICE_URL: http://upload-service:8080
+      SPLITTER_SERVICE_URL: http://splitter-service:8080
+      AI_SERVICE_URL: ${AI_SERVICE_URL}
     ports:
-      - "${API_GATEAWAY_PORT}:${APP_PORT}"
-    env_file:
-      - env/ports.env
-      - env/secure.env
-      - api-gateway/api-gateway.env
-    depends_on:
-      - user-service
-    networks:
-      - pipeline-network
+      - "${API_GATEWAY_PORT}:8080"
+    networks: [pipeline-network]
 
 networks:
   pipeline-network:
@@ -142,4 +178,3 @@ volumes:
   postgres-user-data:
   postgres-upload-data:
   cloudbeaver_data:
-  kafka_data:

@@ -1,0 +1,10 @@
+# Run from the repository root, or set PIPELINE_ENV_FILE to an absolute path.
+spring:
+  config:
+    import: "file:${PIPELINE_ENV_FILE:.env}[.properties]"
+  datasource:
+    url: jdbc:postgresql://localhost:${POSTGRES_UPLOAD_PORT}/${UPLOAD_DB_NAME}
+  kafka:
+    bootstrap-servers: ${KAFKA_EXTERNAL_HOST:localhost}:${KAFKA_PORT:29092}
+server:
+  port: ${UPLOAD_SERVICE_PORT}

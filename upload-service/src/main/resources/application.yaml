@@ -1,5 +1,5 @@
 server:
-  port: ${APP_PORT:8080}
+  port: ${SERVER_PORT:8080}
 
 logging:
   level:
@@ -14,11 +14,12 @@ aws:
   access-key: ${AWS_ACCESS_KEY}
   secret-key: ${AWS_SECRET_KEY}
   region: ${AWS_REGION}
-  bucket-name: ${AWS_BUCKET_NAME:raw-videos}
-  endpoint: ${AWS_ENDPOINT:http://localhost:9000}
+  raw-bucket-name: ${AWS_RAW_BUCKET_NAME}
+  processed-bucket-name: ${AWS_PROCESSED_BUCKET_NAME}
+  endpoint: ${AWS_ENDPOINT}
 
 jwt:
-  secret: ${JWT_SECRET_KEY:dev_super_secret_key_32_bytes_minimum_length!}
+  secret: ${JWT_SECRET_KEY}
   expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
 spring:
@@ -29,9 +30,9 @@ spring:
       max-file-size: 100MB
       max-request-size: 100MB
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:upload_db}
-    username: ${POSTGRES_USER:user}
-    password: ${POSTGRES_PASSWORD:password}
+    url: jdbc:postgresql://${UPLOAD_DB_HOST:localhost}:${UPLOAD_DB_PORT:5432}/${UPLOAD_DB_NAME}
+    username: ${UPLOAD_DB_USER}
+    password: ${UPLOAD_DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
   flyway:
     enabled: true
@@ -46,6 +47,15 @@ spring:
     show-sql: true
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    consumer:
+      group-id: ${KAFKA_UPLOAD_GROUP_ID:upload-group}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
+pipeline:
+  kafka:
+    upload-topic: ${KAFKA_UPLOAD_TOPIC_NAME:video-upload-event-topic}
+    processing-topic: ${KAFKA_PROCESSING_TOPIC_NAME:video-processing-event-topic}
+    partitions: ${KAFKA_TOPIC_PARTITIONS:3}
+    replicas: ${KAFKA_TOPIC_REPLICAS:1}
+    min-isr: ${KAFKA_TOPIC_MIN_ISR:1}

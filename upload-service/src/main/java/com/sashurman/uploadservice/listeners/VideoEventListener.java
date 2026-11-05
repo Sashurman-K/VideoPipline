@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 import tools.jackson.databind.ObjectMapper;
@@ -15,13 +16,15 @@ import tools.jackson.databind.ObjectMapper;
 public class VideoEventListener {
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
+    @Value("${pipeline.kafka.upload-topic}")
+    private String uploadTopic;
 
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleVideoUploadedEvent(VideoUploadedEvent event) {
         log.info("Транзакция успешна. Отправляем ивент в Кафку для видео: {}", event.videoId());
         String jsonPayload = objectMapper.writeValueAsString(event);
-        kafkaTemplate.send("product-created-events-topic", jsonPayload);
+        kafkaTemplate.send(uploadTopic, jsonPayload);
     }
 
 }

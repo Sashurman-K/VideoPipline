@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
 
 jwt:
   secret: ${JWT_SECRET_KEY}
@@ -26,13 +26,13 @@ spring:
                 - JwtAuthFilter
 
             - id: upload-service-route
-              uri: ${UPLOAD_SERVICE_URL:http://localhost:8082}
+              uri: ${UPLOAD_SERVICE_URL:http://localhost:8083}
               predicates:
                 - Path=/api/v1/videos/**
               filters:
                 - JwtAuthFilter
             - id: splitter-service-route
-              uri: ${SPLITTER_SERVICE_URL:http://localhost:8083}
+              uri: ${SPLITTER_SERVICE_URL:http://localhost:8084}
               predicates:
                   - Path=/api/v1/splitt/**
               filters:

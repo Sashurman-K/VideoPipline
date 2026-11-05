@@ -1,17 +1,22 @@
 package com.sashurman.splitterservice.DTO;
 
-import java.time.LocalDateTime;
-import java.util.UUID;
+import com.sashurman.splitterservice.enums.SplitMode;
+import jakarta.annotation.Nullable;
 
-public record VideoRequest(
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+//TODO подумать про интерфейс для этого рекорда
+public record VideoRequest (
         UUID eventId,
         UUID videoId,
-        String eventType,
         LocalDateTime timestamp,
         UUID userId,
         String originalPath,
-        Long fileSizeBytes,
-        String format,
-        int segmentCount
+
+        SplitMode mode,
+        @Nullable Integer segmentCount,
+        @Nullable Double segmentDuration,
+        @Nullable List<TimeSegment> segments
 ) {
 }

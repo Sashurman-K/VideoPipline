@@ -7,7 +7,6 @@ public record KafkaProcessingRequest(
         int chunkIndex,
         int totalChunks,
         String s3Key,
-        double durationSeconds,
         Instant timestamp
 ) {
 }

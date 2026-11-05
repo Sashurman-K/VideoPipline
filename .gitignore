@@ -36,3 +36,10 @@ out/
 ### VS Code ###
 .vscode/
 .env
+# Local configuration and credentials
+*.env
+!.env.example
+!*.env.example
+
+#dev
+local/

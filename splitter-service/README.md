@@ -35,18 +35,9 @@ Splitter Service — это микросервис в составе систе�
 - **`com.sashurman.splitterservice.utils`**
 - `FfmpegNativeProducer` — низкоуровневая обертка над `ProcessBuilder` для запуска команд `ffmpeg` в Alpine Linux.
 
-## 4. Конфигурация (application.yaml)
+## Конфигурация окружения
 
-**Порт для Kafka по умолчанию: 9092**
-
-| **Переменная** | **Описание** |
-| --- | --- |
-| `SPRING_KAFKA_BOOTSTRAP_SERVERS` | Адрес и порт кластера Kafka (`localhost:9092`) |
-| `AWS_S3_ENDPOINT` | Эндпоинт S3-хранилища |
-| `AWS_ACCESS_KEY_ID` | Ключ доступа S3 |
-| `AWS_SECRET_ACCESS_KEY` | Секретный ключ S3 |
-| `AWS_BUCKET_NAME` | Название корзины в S3-хранилище |
-| `SPLITTER_THREAD_POOL_SIZE` | Размер пула потоков `ExecutorService` для нарезки |
+Все значения задаются в корневом `.env`. Схема переменных и запуск из IDE: [ENVIRONMENT.md](../ENVIRONMENT.md). Для IDE включите профиль `local` и укажите корень репозитория как рабочую директорию.
 
 ## 5. Требования к окружению и Docker
 

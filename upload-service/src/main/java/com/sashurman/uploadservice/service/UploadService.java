@@ -30,7 +30,7 @@ public class UploadService {
             "video/mp4", "video/webm", "video/quicktime"
     );
     private final S3Client s3Client;
-    @Value("${AWS.raw-bucket-name}")
+    @Value("${aws.raw-bucket-name}")
     private String bucketName;
     private final VideoRepository videoRepository;
     private final ApplicationEventPublisher eventPublisher;

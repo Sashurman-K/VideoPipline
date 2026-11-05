@@ -1,15 +1,16 @@
-AWS:
+aws:
   access-key: ${AWS_ACCESS_KEY}
   secret-key: ${AWS_SECRET_KEY}
   region: ${AWS_REGION}
-  bucket-proccessed-name: ${AWS_PROCESSED_BUCKET_NAME}
-  bucket-raw-name: ${AWS_RAW_BUCKET_NAME}
+  raw-bucket-name: ${AWS_RAW_BUCKET_NAME}
+  processed-bucket-name: ${AWS_PROCESSED_BUCKET_NAME}
   endpoint: ${AWS_ENDPOINT}
+
 server:
-  port: ${APP_PORT:8083}
+  port: ${SERVER_PORT:8080}
 jwt:
-  secret: ${JWT_SECRET_KEY:super_secret_jwt_key_example_change_me_in_production_32bytes_min}
-  expiration-ms: ${JWT_EXPIRATION_MS:864000}
+  secret: ${JWT_SECRET_KEY}
+  expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 spring:
   application:
     name: splitter-service
@@ -23,8 +24,19 @@ spring:
     show-sql: true
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    consumer:
+      group-id: ${KAFKA_SPLITTER_GROUP_ID:splitter-group}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
 
 
+
+pipeline:
+  kafka:
+    upload-topic: ${KAFKA_UPLOAD_TOPIC_NAME:video-upload-event-topic}
+    processing-topic: ${KAFKA_PROCESSING_TOPIC_NAME:video-processing-event-topic}
+    final-topic: ${KAFKA_FINAL_TOPIC_NAME:video-final-event-topic}
+    partitions: ${KAFKA_TOPIC_PARTITIONS:3}
+    replicas: ${KAFKA_TOPIC_REPLICAS:1}
+    min-isr: ${KAFKA_TOPIC_MIN_ISR:1}

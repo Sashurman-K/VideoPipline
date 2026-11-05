@@ -65,3 +65,7 @@
                                           v
                                  [Postgres Splitter]
 
+
+## Настройки окружения
+
+Единый источник значений — корневой `.env` (шаблон `.env.example`). Инструкции для Docker и IDE: [ENVIRONMENT.md](ENVIRONMENT.md).

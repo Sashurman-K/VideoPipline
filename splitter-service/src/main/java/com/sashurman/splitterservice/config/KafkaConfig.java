@@ -17,13 +17,28 @@ import java.util.Map;
 
 @Configuration
 public class KafkaConfig {
-    @Value("${")
+    @Value("${spring.kafka.bootstrap-servers}")
+    private String bootstrapServers;
+    @Value("${pipeline.kafka.processing-topic}")
+    private String processingTopic;
+    @Value("${pipeline.kafka.final-topic}")
+    private String finalTopic;
+    @Value("${pipeline.kafka.partitions}")
+    private int partitions;
+    @Value("${pipeline.kafka.replicas}")
+    private int replicas;
+    @Value("${pipeline.kafka.min-isr}")
+    private String minIsr;
+
+    @Value("${spring.kafka.consumer.group-id}")
+    private String groupId;
+
     @Bean
     NewTopic createTopic() {
-        return TopicBuilder.name("video-processing-event-topic")
-                .partitions(3)
-                .replicas(3)
-                .configs(Map.of("min.insync.replicas", "2"))
+        return TopicBuilder.name(topic)
+                .partitions(partitions)
+                .replicas(replicas)
+                .configs(Map.of("min.insync.replicas", minIsr))
                 .build();
     }
     @Bean
@@ -32,7 +47,7 @@ public class KafkaConfig {
 
         config.put(
                 ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
-                "kafka-broker:9092"
+                bootstrapServers
         );
 
         config.put(
@@ -51,8 +66,8 @@ public class KafkaConfig {
     public ConsumerFactory<String, String> consumerFactory() {
         Map<String, Object> config = new HashMap<>();
 
-        config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "kafka-broker:9092");
-        config.put(ConsumerConfig.GROUP_ID_CONFIG, "splitter-group");
+        config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        config.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");

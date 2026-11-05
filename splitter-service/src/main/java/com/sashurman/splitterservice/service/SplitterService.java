@@ -1,10 +1,15 @@
 package com.sashurman.splitterservice.service;
 
 import com.sashurman.common.exception.InternalServerException;
+import com.sashurman.common.exception.InvalidVideoException;
+import com.sashurman.splitterservice.DTO.KafkaFinalProcessRequest;
+import com.sashurman.splitterservice.DTO.VideoFile;
 import com.sashurman.splitterservice.DTO.VideoRequest;
 import com.sashurman.splitterservice.utils.FfmpegNativeProducer;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -16,13 +21,17 @@ import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.stream.IntStream;
-
+@Slf4j
 @Service
 public class SplitterService {
     private final Semaphore semaphore = new Semaphore(10);
     private final S3Service s3Service;
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final FfmpegNativeProducer nativeProducer;
+    @Value("${pipeline.kafka.processing-topic}")
+    private String processingTopic;
+    @Value("${pipeline.kafka.final-topic}")
+    private String finalTopic;
 
     public SplitterService(FfmpegNativeProducer nativeProducer,
                            KafkaTemplate<String, Object> kafkaTemplate,
@@ -32,34 +41,41 @@ public class SplitterService {
         this.nativeProducer = nativeProducer;
     }
 
-    public void splitByCount(VideoRequest request) {
-        File rawVideo = s3Service.downloadToTempFile(request.originalPath());
+    public void splitProducer(VideoRequest request) {
+        boolean isSuccess = false;
+        File file = s3Service.downloadToTempFile(request.originalPath());
+        var rawVideo = new VideoFile(
+                file,
+                request.originalPath());
         try {
             Path videoTempDir = Files.createDirectories(
                     Path.of(System.getProperty("java.io.tmpdir"),
                             "splitter",
                             request.videoId().toString()));
-            List<File> chunks = nativeProducer.splitVideo(rawVideo, videoTempDir.toFile(), request.segmentCount(),
-                    getVideoDurationSeconds(rawVideo));
+            List<File> chunks = nativeProducer.splitVideo(rawVideo, videoTempDir.toFile(),
+                    switch (request.mode()) {
+                        case BY_COUNT -> request.segmentCount();
+                        case BY_DURATION -> request.segmentDuration();
+                        case BY_TIMESTAMPS -> request.segments();
+                        default -> throw new InvalidVideoException();
+                    });
             try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
                 IntStream.range(0, chunks.size()).forEach(i -> {
-                    File chunk = chunks.get(i);
+                    var chunk = chunks.get(i);
 
                     executor.execute(() -> {
                         try {
                             semaphore.acquire();
 
-                            double chunkDuration = getVideoDurationSeconds(chunk);
-
                             ChunkUploadTask task = new ChunkUploadTask(
                                     chunk,
-                                    request.format(),
-                                    chunkDuration,
+                                    FfmpegNativeProducer.getFileExtension(chunk.getName()),
                                     chunks.size(),
                                     i,
                                     request.videoId().toString(),
                                     s3Service,
-                                    kafkaTemplate
+                                    kafkaTemplate,
+                                    processingTopic
                             );
 
                             task.run();
@@ -74,34 +90,19 @@ public class SplitterService {
                         }
                     });
                 });
+                isSuccess = true;
             }
         } catch (Exception ex) {
             throw new InternalServerException(ex.getMessage());
         }
+        finally {
+            if (file != null && !file.delete()) log.error("Error delete file {}", file.getAbsolutePath());
+            kafkaTemplate.send(finalTopic,
+                    new KafkaFinalProcessRequest(
 
-    }
-
-    public double getVideoDurationSeconds(File videoFile) throws IOException, InterruptedException {
-        List<String> command = List.of(
-                "ffprobe",
-                "-v", "error",
-                "-show_entries", "format=duration",
-                "-of", "default=noprint_wrappers=1:nokey=1",
-                videoFile.getAbsolutePath()
-        );
-
-        ProcessBuilder processBuilder = new ProcessBuilder(command);
-        Process process = processBuilder.start();
-
-        try (var reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-            String output = reader.readLine();
-            int exitCode = process.waitFor();
-
-            if (exitCode == 0 && output != null && !output.isBlank()) {
-                return Double.parseDouble(output.trim());
-            }
+                    ));
         }
-
-        throw new RuntimeException("Не удалось определить длительность видео: " + videoFile.getName());
     }
+
+
 }

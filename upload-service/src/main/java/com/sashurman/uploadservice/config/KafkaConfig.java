@@ -5,6 +5,7 @@ import com.sashurman.uploadservice.DTO.event.VideoUploadedEvent;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.TopicBuilder;
@@ -19,13 +20,24 @@ import java.util.Map;
 
 @Configuration
 public class KafkaConfig {
+    @Value("${spring.kafka.bootstrap-servers}")
+    private String bootstrapServers;
+    @Value("${pipeline.kafka.upload-topic}")
+    private String topic;
+    @Value("${pipeline.kafka.partitions}")
+    private int partitions;
+    @Value("${pipeline.kafka.replicas}")
+    private int replicas;
+    @Value("${pipeline.kafka.min-isr}")
+    private String minIsr;
+
 
     @Bean
     NewTopic createTopic() {
-        return TopicBuilder.name("video-upload-event-topic")
-                .partitions(3)
-                .replicas(3)
-                .configs(Map.of("min.insync.replicas", "2"))
+        return TopicBuilder.name(topic)
+                .partitions(partitions)
+                .replicas(replicas)
+                .configs(Map.of("min.insync.replicas", minIsr))
                 .build();
     }
     @Bean
@@ -34,7 +46,7 @@ public class KafkaConfig {
 
         config.put(
                 ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
-                "kafka-broker:9092"
+                bootstrapServers
         );
 
         config.put(

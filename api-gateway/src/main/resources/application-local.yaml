@@ -1,0 +1,11 @@
+# Run from the repository root, or set PIPELINE_ENV_FILE to an absolute path.
+spring:
+  config:
+    import: "file:${PIPELINE_ENV_FILE:.env}[.properties]"
+server:
+  port: ${API_GATEWAY_PORT}
+
+# Resolve downstream ports from the same root .env.
+USER_SERVICE_URL: http://localhost:${USER_SERVICE_PORT}
+UPLOAD_SERVICE_URL: http://localhost:${UPLOAD_SERVICE_PORT}
+SPLITTER_SERVICE_URL: http://localhost:${SPLITTER_SERVICE_PORT}

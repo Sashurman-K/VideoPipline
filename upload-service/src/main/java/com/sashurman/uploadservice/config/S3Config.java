@@ -23,17 +23,17 @@ import java.net.URISyntaxException;
 @Slf4j
 @Configuration
 public class S3Config {
-    @Value("${AWS.access-key}")
+    @Value("${aws.access-key}")
     private String accessKey;
-    @Value("${AWS.secret-key}")
+    @Value("${aws.secret-key}")
     private String secretKey;
-    @Value("${AWS.region}")
+    @Value("${aws.region}")
     private String region;
-    @Value("${AWS.raw-bucket-name}")
+    @Value("${aws.raw-bucket-name}")
     private String rawBucketName;
-    @Value("${AWS.proccessed-bucket-name}")
+    @Value("${aws.processed-bucket-name}")
     private String processedBucketName;
-    @Value("${AWS.endpoint}")
+    @Value("${aws.endpoint}")
     private String endpoint;
     @Bean
     public S3Client s3Client() {

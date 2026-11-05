@@ -1,10 +1,16 @@
 package com.sashurman.splitterservice.utils;
 
+import com.sashurman.common.exception.InternalServerException;
+import com.sashurman.splitterservice.DTO.FFmpegFileInfoInput;
 import com.sashurman.splitterservice.DTO.TimeSegment;
+import com.sashurman.splitterservice.DTO.VideoFile;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.ObjectMapper;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -18,7 +24,7 @@ public final class FfmpegNativeProducer {
         throw new UnsupportedOperationException("Cannot create an instance");
     }
 
-    public List<File> splitVideo(File inputFile, File outputDir, int segmentDurationSeconds)
+    public List<File> splitVideo(VideoFile inputFile, File outputDir, double segmentDurationSeconds)
             throws IOException, InterruptedException {
 
         // Шаблон имени чанков: output_001.mp4, output_002.mp4
@@ -27,7 +33,7 @@ public final class FfmpegNativeProducer {
         // Собираем команду CLI
         List<String> command = List.of(
                 "ffmpeg",
-                "-i", inputFile.getAbsolutePath(),
+                "-i", inputFile.file().getAbsolutePath(),
                 "-c", "copy",
                 "-map", "0",
                 "-segment_time", String.valueOf(segmentDurationSeconds),
@@ -50,11 +56,11 @@ public final class FfmpegNativeProducer {
 
         if (!finished) {
             process.destroyForcibly();
-            throw new RuntimeException("FFmpeg превысил лимит времени выполнения");
+            throw new InternalServerException("FFmpeg превысил лимит времени выполнения");
         }
 
         if (process.exitValue() != 0) {
-            throw new RuntimeException("FFmpeg завершился с ошибкой, код: " + process.exitValue());
+            throw new InternalServerException("FFmpeg завершился с ошибкой, код: " + process.exitValue());
         }
         // Собираем и сортируем созданные файлы
         File[] files = outputDir.listFiles((dir, name) -> name.startsWith("chunk_") && name.endsWith(".mp4"));
@@ -66,7 +72,7 @@ public final class FfmpegNativeProducer {
         return List.of(files);
     }
 
-    public List<File> splitVideo(File inputFile, File outputDir, List<TimeSegment> segments)
+    public List<File> splitVideo(VideoFile inputFile, File outputDir, List<TimeSegment> segments)
             throws IOException, InterruptedException {
 
         List<File> outputFiles = new ArrayList<>();
@@ -80,7 +86,7 @@ public final class FfmpegNativeProducer {
                     "ffmpeg",
                     "-ss", String.valueOf(segment.startSeconds()),
                     "-to", String.valueOf(segment.endSeconds()),
-                    "-i", inputFile.getAbsolutePath(),
+                    "-i", inputFile.file().getAbsolutePath(),
                     "-c", "copy",
                     "-avoid_negative_ts", "make_zero",
                     outputFile.getAbsolutePath()
@@ -103,10 +109,46 @@ public final class FfmpegNativeProducer {
 
         return outputFiles;
     }
-
-    public List<File> splitVideo(File inputFile, File outputDir, int quantity, double durationFUllVideo) throws IOException, InterruptedException {
-        List<TimeSegment> segments = TimeSegment.generateSegments(durationFUllVideo, quantity);
+    public List<File> splitVideo(VideoFile inputFile, File outputDir, int quantity) throws IOException, InterruptedException {
+        List<TimeSegment> segments = TimeSegment.generateSegments(inputFile.duration(), quantity);
         return splitVideo(inputFile, outputDir, segments);
 
+    }
+    public VideoFile getVideoFile(File file) throws IOException, InterruptedException
+    {
+        List<String> command = List.of(
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_format",
+                "-show_streams",
+                "-of",
+                "json",
+                file.getAbsolutePath());
+
+        ProcessBuilder processBuilder = new ProcessBuilder(command);
+        processBuilder.redirectErrorStream(true);
+
+        Process process = processBuilder.start();
+        boolean finished = process.waitFor(2, TimeUnit.MINUTES);
+        if (!finished) {
+            process.destroyForcibly();
+            throw new InternalServerException("FFmpeg превысил лимит времени выполнения");
+        }
+        ObjectMapper mapper = new ObjectMapper();
+        var temp = mapper.readValue(process.getInputStream(), FFmpegFileInfoInput.class);
+        FFmpegFileInfoInput.Stream videoStream = temp.streams().getFirst().codecType().equals("video")
+                ? temp.streams().getFirst()
+                : temp.streams().getLast();
+        return new VideoFile(
+                file,
+                Double.parseDouble(temp.format().duration()),
+                temp.format().formatName(),
+                Double.parseDouble(videoStream.averageFrameRate()),
+                videoStream.width(),
+                videoStream.height(),
+                Long.parseLong(temp.format().size()),
+                null
+        );
     }
 }

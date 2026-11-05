@@ -1,0 +1,8 @@
+# Run from the repository root, or set PIPELINE_ENV_FILE to an absolute path.
+spring:
+  config:
+    import: "file:${PIPELINE_ENV_FILE:.env}[.properties]"
+  datasource:
+    url: jdbc:postgresql://localhost:${POSTGRES_USER_PORT}/${USER_DB_NAME}
+server:
+  port: ${USER_SERVICE_PORT}
